@@ -1,0 +1,45 @@
+version: "2.1"
+services:
+  wireguard:
+    image: linuxserver/wireguard
+    container_name: wireguard
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+      - SERVERURL=wireguard.domain.com #optional
+      - SERVERPORT=51820 #optional
+      - PEERS=5 #optional
+      - UMASK=u=rwX,go=rX
+      - PEERDNS=auto #optional
+      - INTERNAL_SUBNET=10.13.13.0 #optional
+    volumes:
+      - ./config:/config
+      - /lib/modules:/lib/modules
+    ports:
+      - 51820:51820/udp
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    restart: unless-stopped
+
+  nginx:
+    image: nginx
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./config:/var/www/wireguard
+      - ./nginx/.htpasswd:/etc/nginx/.htpasswd
+    ports:
+      - "80:80"
+  permission-worker:
+    image: alpine:3.16.1
+    volumes:
+      - ./config:/config
+    depends_on:
+      - wireguard
+    restart: "no"
+    command:
+      - sh
+      - /config/entrypoint.sh
